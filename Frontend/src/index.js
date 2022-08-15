@@ -8,6 +8,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-
-
-// 1:19:52
