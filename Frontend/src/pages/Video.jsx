@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import ThumbDownOffAltOutlinedIcon from '@mui/icons-material/ThumbDownOffAltOutlined';
 import ReplyOutlinedIcon from '@mui/icons-material/ReplyOutlined';
 import AddTaskOutlinedIcon from '@mui/icons-material/AddTaskOutlined';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import Comments from '../components/Comments';
 import Card from '../components/Card';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
+import axios from 'axios';
+import { dislike, fetchSuccess, like } from '../redux/videoSlice';
+import { format } from 'timeago.js';
 
 const Container = styled.div`
   display: flex;
@@ -107,63 +114,103 @@ const Subscribe = styled.button`
 `;
 
 const Video = () => {
+  const { currentUser } = useSelector((state) => state.user);
+  const { currentVideo } = useSelector((state) => state.video);
+  const dispatch = useDispatch();
+
+  const path = useLocation().pathname.split('/')[2];
+
+  const [channel, setChannel] = useState({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const videoRes = await axios.get(`/videos/find/${path}`);
+        const channelRes = await axios.get(
+          `/users/find/${videoRes.data.userId}`
+        );
+        setChannel(channelRes.data);
+        dispatch(fetchSuccess(videoRes.data));
+      } catch (err) {}
+    };
+    fetchData();
+  }, [path, dispatch]);
+
+  const handleLike = async () => {
+    await axios.put(`/users/like/${currentVideo._id}`);
+    dispatch(like(currentUser._id));
+  };
+
+  const handleDislike = async () => {
+    await axios.put(`/users/dislike/${currentVideo._id}`);
+    dispatch(dislike(currentUser._id));
+  };
+
   return (
     <Container>
-      <Content>
-        <VideoWrapper>
-          <iframe
-            width="100%"
-            height="720"
-            src="https://www.youtube.com/embed/P48abml48JM"
-            title="YouTube video player"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        </VideoWrapper>
-        <Title>League of Legends</Title>
-        <Details>
-          <Info>7,351,449 views • Apr 16, 2016</Info>
-          <Buttons>
-            <Button>
-              <ThumbUpOutlinedIcon />
-              103K
-            </Button>
-            <Button>
-              <ThumbDownOffAltOutlinedIcon />
-              Dislike
-            </Button>
-            <Button>
-              <ReplyOutlinedIcon />
-              Share
-            </Button>
-            <Button>
-              <AddTaskOutlinedIcon /> Save
-            </Button>
-          </Buttons>
-        </Details>
-        <Hr />
-        <Channel>
-          <ChannelInfo>
-            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/LoL_icon.svg/2048px-LoL_icon.svg.png" />
-            <ChannelDetail>
-              <ChannelName>LOL</ChannelName>
-              <ChannelCounter>14.8M subscribers</ChannelCounter>
-              <Description>
-                League of Legends is one of the world's most popular video
-                games, developed by Riot Games. It features a team-based
-                competitive game mode based on strategy and outplaying
-                opponents. Players work with their team to break the enemy Nexus
-                before the enemy team breaks theirs.
-              </Description>
-            </ChannelDetail>
-          </ChannelInfo>
-          <Subscribe>SUBSCRIBE</Subscribe>
-        </Channel>
-        <Hr />
-        <Comments />
-      </Content>
-      <Recommendation>
+      {currentVideo && (
+        <Content>
+          <VideoWrapper>
+            <iframe
+              width="100%"
+              height="720"
+              src="https://www.youtube.com/embed/P48abml48JM"
+              title="YouTube video player"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </VideoWrapper>
+          <Title>{currentVideo.title}</Title>
+          <Details>
+            <Info>
+              {currentVideo.views} views • {format(currentVideo.createdAt)}
+            </Info>
+            <Buttons>
+              <Button onClick={handleLike}>
+                {currentVideo.likes?.includes(currentUser._id) ? (
+                  <ThumbUpIcon />
+                ) : (
+                  <ThumbUpOutlinedIcon />
+                )}{' '}
+                {currentVideo.likes?.length}
+              </Button>
+              <Button onClick={handleDislike}>
+                {currentVideo.dislikes?.includes(currentUser._id) ? (
+                  <ThumbDownIcon />
+                ) : (
+                  <ThumbDownOffAltOutlinedIcon />
+                )}{' '}
+                Dislike
+              </Button>
+              <Button>
+                <ReplyOutlinedIcon />
+                Share
+              </Button>
+              <Button>
+                <AddTaskOutlinedIcon /> Save
+              </Button>
+            </Buttons>
+          </Details>
+          <Hr />
+          <Channel>
+            <ChannelInfo>
+              <Image src={channel.img} />
+              <ChannelDetail>
+                <ChannelName>{channel.name}</ChannelName>
+                <ChannelCounter>
+                  {channel.subscribers} subscribers
+                </ChannelCounter>
+                <Description>{currentVideo.desc}</Description>
+              </ChannelDetail>
+            </ChannelInfo>
+            <Subscribe>SUBSCRIBE</Subscribe>
+          </Channel>
+          <Hr />
+          <Comments />
+        </Content>
+      )}
+      {/* <Recommendation>
         <Card type="sm" />
         <Card type="sm" />
         <Card type="sm" />
@@ -175,7 +222,7 @@ const Video = () => {
         <Card type="sm" />
         <Card type="sm" />
         <Card type="sm" />
-      </Recommendation>
+      </Recommendation> */}
     </Container>
   );
 };
